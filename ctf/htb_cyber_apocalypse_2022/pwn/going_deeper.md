@@ -6,7 +6,7 @@ Let's start the program first and see what we're dealing with.
 ![Intro Screen](img/going_deeper_intro.png)
 
 Both option 1. and 2. request some kind of authentication from us, that we can't provide.
-If just enter anything we get an error message and the program terminates
+If just enter anything we get an error message and the program terminates  
 ![Auth Fail](img/going_deeper_auth_fail.png)  
 
 Maybe the password is just a string that's saved in the binary itself. Let's check with
@@ -76,8 +76,8 @@ Now we navigate to the ``main`` function by opening the command line with ``Shif
 :> s main
 ```
 We immediately see a call to ``sym.admin_panel`` where the code of the menu options seem to be contained. Let's go there with ``s sym.admin_panel``
-By following both the 1. and 2. options 
-![Menu Assembly](img/going_deeper_menu.png)
+By following both the 1. and 2. options  
+![Menu Assembly](img/going_deeper_menu.png)  
 we finally end up at the code that reads and checks our password input 
 ![Password Check](img/going_deeper_pw_check.png)
 
@@ -93,8 +93,8 @@ We see that ``read()`` reads up to 57 bytes from stdin. Let's put a breakpoint r
 :> db 0x00400abf
 ```
 restart the program with the command ``doo`` and hit ``F9`` to continue execution.  
-Select either 1. or 2. in the menu. We hit our first breakpoint and we can take a look at our stack: 
-![Stack before](img/going_deeper_stack_before.png)
+Select either 1. or 2. in the menu. We hit our first breakpoint and we can take a look at our stack:  
+![Stack before](img/going_deeper_stack_before.png)  
 We can see the three values (``a``, ``b`` and ``c``) that are checked before the password itself is checked (purple) and we can discover the return address (0x400b94) of ``admin_panel`` (red)
 
  Let's hit F9 to continue execution and enter the maximum amount of characters (57)
