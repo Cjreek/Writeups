@@ -3,4 +3,4 @@
 # Table of Contents
 
 ## Pwn
-1. [Space pirate: Going Deeper](/pwn/going_deeper.md)
+1. [Space pirate: Going Deeper](pwn/going_deeper.md)
