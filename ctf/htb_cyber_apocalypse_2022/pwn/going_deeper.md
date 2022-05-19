@@ -2,11 +2,13 @@
 Now we're on to the second challenge in the "pwn" category. 
 
 ## Checking out the binary
-Let's start the program first and see what we're dealing with.
+Let's start the program first and see what we're dealing with.  
+  
 ![Intro Screen](img/going_deeper_intro.png)
 
 Both option 1. and 2. request some kind of authentication from us, that we can't provide.
 If just enter anything we get an error message and the program terminates  
+  
 ![Auth Fail](img/going_deeper_auth_fail.png)  
 
 Maybe the password is just a string that's saved in the binary itself. Let's check with
@@ -77,8 +79,11 @@ Now we navigate to the ``main`` function by opening the command line with ``Shif
 ```
 We immediately see a call to ``sym.admin_panel`` where the code of the menu options seem to be contained. Let's go there with ``s sym.admin_panel``
 By following both the 1. and 2. options  
+  
 ![Menu Assembly](img/going_deeper_menu.png)  
-we finally end up at the code that reads and checks our password input 
+  
+we finally end up at the code that reads and checks our password input  
+  
 ![Password Check](img/going_deeper_pw_check.png)
 
 If we take a look at the code we can see 3 potential ways to get to the flag:
@@ -94,16 +99,19 @@ We see that ``read()`` reads up to 57 bytes from stdin. Let's put a breakpoint r
 ```
 restart the program with the command ``doo`` and hit ``F9`` to continue execution.  
 Select either 1. or 2. in the menu. We hit our first breakpoint and we can take a look at our stack:  
+  
 ![Stack before](img/going_deeper_stack_before.png)  
+  
 We can see the three values (``a``, ``b`` and ``c``) that are checked before the password itself is checked (purple) and we can discover the return address (0x400b94) of ``admin_panel`` (red)
 
  Let's hit F9 to continue execution and enter the maximum amount of characters (57)
 ````
 [*] Input: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
 ````
-Now we should hit the 2nd breakpoint. Let's look at the stack again:
+Now we should hit the 2nd breakpoint. Let's look at the stack again:  
+  
 ![Stack after](img/going_deeper_stack_after.png)
-
+  
 As we can see ``a``, ``b`` and ``c`` are untouched by the buffer overflow. So there is at least no direct way to change those values and get access to the flag that way.  
 But the return address gets overwritten by the buffer overflow - or at least the least significant byte of the return address.
 That should be good enough though, because the code printing the flag (0x00400b**12**) is not too far away from the original return address (0x400b**94**)
@@ -120,7 +128,7 @@ r = process("./sp_going_deeper")
 r.sendline(b"1")
 r.recvrepeat(0.1)
 
-# send payload to jump the code printing the flag at 0x00400b12
+# send payload to jump to the code printing the flag at 0x00400b12
 payload = b"A"*56 # put anything for the first 56/57 bytes
 payload += b"\x12" # change one byte of the return address to point to the system() call printing the flag
 r.sendline(payload)
@@ -146,8 +154,10 @@ Now if we execute that script we get the flag:
 ## An alternative way
 So what about passing the right password to the programm so it prints the flag voluntarily?  
 We tried that already at the beginning when we found the password with the ``strings`` tool, but it didn't work.
-But why did it not work? It's the same password the programm is checking for in the code:
+But why did it not work? It's the same password the programm is checking for in the code:  
+  
 ![Strncmp](img/going_deeper_strncmp.png)  
+  
 There is a catch. The password "DRAEGER15th30n34nd0nly4dm1n15tr4t0R0fth15sp4c3cr4ft" is 51 characters long, but strncmp is told to compare 52 characters.
 The 52. character of the string constant the code is comparing our input to is a null byte (\x00) because c-strings are terminated with a null byte.
 The 52. character of our input is actually a new line character (\n or \x0a). So that's why the comparison fails.
