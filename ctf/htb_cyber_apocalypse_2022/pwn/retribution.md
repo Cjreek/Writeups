@@ -106,7 +106,8 @@ Output:
 Looks good!  
 
 ## Buffer overflow
-Now that we have the base address of our program we need a buffer overflow to use that address. Earlier we found that the prompt  
+Now that we have the base address of our program we need a buffer overflow to use that address.  
+Earlier we found that the prompt  
   
 ````
 [*] Verify new coordinates? (y/n):
@@ -127,11 +128,12 @@ The first 8 bytes on the stack are the address ``ret`` will return to.
 ![Buffer overflow read](img/retribution_bof_rip.png)  
   
 Those 8 bytes translate to the address ``0x3164413064413963``
-Now we can find out the offset of that char sequence in our input with either the ``pattern_offset`` tool of metasploit or by pasting that address to the webpage we created that pattern from.  
+Now we can find out the offset of that char sequence in our input with either the ``pattern_offset`` tool of metasploit or by pasting that address to the webpage we created that pattern with.  
 Either method will tell us that the offset of the return address in our input string is 88.  
   
 Now let's try and make sure that that offset is correct and we can indeed redirect our program flow.  
-For this test we want the programm to return to the ``missile_launch`` function itself instead of closing the program. For that we need its address which we can calculate by adding the offset of the function to the base address we leaked earlier.  
+For this test we want the program to return to the ``missile_launch`` function itself instead of closing the program.  
+For that we need its address which we can calculate by adding the offset of the function to the base address we leaked earlier.  
 We can get the offset of the function with pwntools:
 
 ````python
@@ -351,8 +353,9 @@ Now we have everything but the "one gadget" we're talking about above. We can se
   [<span style="color:lime">rsp</span>+0x70] == NULL
 </pre>
   
-The tool found 4 possible one gadgets. Not all of them are guaranteed to work though. We have to try them all and seem if one of those works.  
-I'll make it short: the last one at offste ``0xf1247`` will work.  
+The tool found 4 possible one gadgets.  
+Not all of them are guaranteed to work though. We have to try them all and seem if one of those works.  
+I'll make it short: the last one at offset ``0xf1247`` will work.  
 So let's add the offset to our code and calculate the real address of our one gadget as well:
 
 ````python
